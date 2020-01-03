@@ -45,8 +45,9 @@ class Bakery(Card):
 
     def on_activate(self, players: list, card_owner_ind: int, active_player_ind: int, state):
         from app import write_message
-        players[card_owner_ind].wallet += 1
-        write_message(f"Player {card_owner_ind + 1} received 1 coin from the bank", state)
+        total = 2 if players[card_owner_ind].landmarks['Shopping Mall'][0] else 1
+        players[card_owner_ind].wallet += total
+        write_message(f"Player {card_owner_ind + 1} received {total} coin{'s' if total == 2 else ''} from the bank", state)
 
 
 class Cafe(Card):
@@ -57,9 +58,11 @@ class Cafe(Card):
     def on_activate(self, players: list, card_owner_ind: int, active_player_ind: int, state):
         from app import write_message
         if players[active_player_ind].wallet > 0:
-            players[active_player_ind].wallet -= 1
-            players[card_owner_ind].wallet += 1
-            write_message(f"Player {card_owner_ind + 1} received 1 coin from Player {active_player_ind + 1}", state)
+            total = min(players[active_player_ind].wallet, 2) if players[card_owner_ind].landmarks['Shopping Mall'][0] else 1
+            players[active_player_ind].wallet -= total
+            players[card_owner_ind].wallet += total
+            write_message(f"Player {card_owner_ind + 1} received {total} coin{'s' if total == 2 else ''} from Player "
+                          f"{active_player_ind + 1}", state)
 
 
 class ConvenienceStore(Card):
@@ -70,8 +73,9 @@ class ConvenienceStore(Card):
 
     def on_activate(self, players: list, card_owner_ind: int, active_player_ind: int, state):
         from app import write_message
-        players[card_owner_ind].wallet += 3
-        write_message(f"Player {card_owner_ind + 1} received 3 coins from the bank", state)
+        total = 4 if players[card_owner_ind].landmarks['Shopping Mall'][0] else 3
+        players[card_owner_ind].wallet += total
+        write_message(f"Player {card_owner_ind + 1} received {total} coins from the bank", state)
 
 
 class Forest(Card):
@@ -246,7 +250,8 @@ class FamilyRestaurant(Card):
 
     def on_activate(self, players: list, card_owner_ind: int, active_player_ind: int, state):
         from app import write_message
-        total = min(players[active_player_ind].wallet, 2)
+        total = min(players[active_player_ind].wallet, 3) if players[card_owner_ind].landmarks['Shopping Mall'][0] \
+            else min(players[active_player_ind].wallet, 2)
         players[card_owner_ind].wallet += total
         players[active_player_ind].wallet -= total
 

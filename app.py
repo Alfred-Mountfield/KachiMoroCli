@@ -56,7 +56,7 @@ class GameStateUi:
         stdscr.refresh()
 
 
-def update_board(players: list, state: GameStateUi, shop: Shop):
+def update_board(players: list, active_player_ind: int, state: GameStateUi, shop: Shop):
     for ind, player in enumerate(players):
         text_box = state.player_text_boxes[ind][0]
         text_box.clear()
@@ -79,6 +79,11 @@ def update_board(players: list, state: GameStateUi, shop: Shop):
         card_obj = card()
         rolls_active = ' - '.join(map(str, card_obj.rolls_active))
         text_box.addstr(f"  [{card_obj.cost} Coins]  {rolls_active.center(9)}  {card_obj.name} x{shop.inventory[card]} \n")
+
+    for landmark in players[active_player_ind].landmarks:
+        if not players[active_player_ind].landmarks[landmark][0]:
+            cost = players[active_player_ind].landmarks[landmark][1]
+            text_box.addstr(f"  [{cost} Coins]".ljust(24) + f"{landmark}\n")
 
 
 def write_message(msg: str, state: GameStateUi):
@@ -114,8 +119,9 @@ def parse_yes_no_input(query: str, state: GameStateUi):
 
 
 def parse_buy(active_player: Player, state: GameStateUi, shop: Shop):
-    valid_establishments = ["Wheat Field", "Ranch", "Bakery", "Cafe", "Convenience Store", "Forest", "Stadium", "TV Station", "Business Centre",
-             "Cheese Factory", "Furniture Factory", "Mine", "Family Restaurant", "Apple Orchard", "Fruit And Vegetable Market", "Nothing"]
+    valid_establishments = ["Wheat Field", "Ranch", "Bakery", "Cafe", "Convenience Store", "Forest", "Stadium", "TV Station",
+                            "Business Center", "Cheese Factory", "Furniture Factory", "Mine", "Family Restaurant", "Apple Orchard",
+                            "Fruit And Vegetable Market", "Nothing"]
     valid_landmarks = [x for x in active_player.landmarks if not active_player.landmarks[x][0]]
 
     while True:
@@ -202,7 +208,7 @@ def run_game(num_of_players, stdscr):
 
     state = GameStateUi(stdscr, players)
     shop = Shop()
-    update_board(players, state, shop)
+    update_board(players, active_player, state, shop)
 
     # game loop
     while True:
@@ -213,7 +219,14 @@ def run_game(num_of_players, stdscr):
 
         rolls = roll_dice(two_dice)
         roll = rolls[0] + rolls[1]
-        write_message(f"Rolled: {roll[0]}, {roll[1]}", state)
+        write_message(f"Rolled: {rolls[0]}, {rolls[1]}", state) if rolls[1] else write_message(f"Rolled: {rolls[0]}", state)
+
+        if players[active_player].landmarks['Radio Tower'][0]:
+            if parse_yes_no_input("Do you want to roll again?", state):
+                rolls = roll_dice(two_dice)
+                roll = rolls[0] + rolls[1]
+                write_message(f"Rolled: {rolls[0]}, {rolls[1]}", state) if rolls[1] else write_message(f"Rolled: {rolls[0]}", state)
+
 
         for ind in range(num_of_players):
             player_ind = (ind + active_player + 1) % 4
@@ -224,8 +237,9 @@ def run_game(num_of_players, stdscr):
                     for num_of_cards in range(players[player_ind].cards[card]):
                         card_obj.on_activate(players=players, card_owner_ind=player_ind, active_player_ind=active_player, state=state)
 
+        update_board(players, active_player, state, shop)
         parse_buy(players[active_player], state, shop)
-        update_board(players, state, shop)
+        update_board(players, active_player, state, shop)
 
         if len([x for x in players[active_player].landmarks if players[active_player].landmarks[x][0]]) == 4:
             write_message(f"Player {active_player + 1} wins the game!", state)
