@@ -119,14 +119,30 @@ def parse_yes_no_input(query: str, state: GameStateUi):
 
 
 def parse_buy(active_player: Player, state: GameStateUi, shop: Shop):
-    valid_establishments = ["Wheat Field", "Ranch", "Bakery", "Cafe", "Convenience Store", "Forest", "Stadium", "TV Station",
-                            "Business Center", "Cheese Factory", "Furniture Factory", "Mine", "Family Restaurant", "Apple Orchard",
-                            "Fruit And Vegetable Market", "Nothing"]
-    valid_landmarks = [x for x in active_player.landmarks if not active_player.landmarks[x][0]]
+    establishments = ["Wheat Field", "Ranch", "Bakery", "Cafe", "Convenience Store", "Forest", "Stadium", "TV Station",
+                      "Business Center", "Cheese Factory", "Furniture Factory", "Mine", "Family Restaurant", "Apple Orchard",
+                      "Fruit And Vegetable Market"]
+    bought_purples = [x for x in ["Stadium", "TV Station", "Business Center"] if
+                      active_player.cards[type(establishment_str_to_obj(x.lower()))]]
+
+    valid_establishments = []
+    for establishment in establishments:
+        card_obj = establishment_str_to_obj(establishment.lower())
+        # establishments with inventory left in the shop
+        if shop.inventory[type(card_obj)] and establishment not in bought_purples:
+            if active_player.wallet >= card_obj.cost:
+                valid_establishments.append(establishment)
+
+    valid_landmarks = []
+    for landmark in active_player.landmarks:
+        if active_player.landmarks[landmark][0] and active_player.wallet >= active_player.landmarks[landmark][1]:
+            valid_landmarks.append(landmark)
+
+    options = ["Nothing"] + valid_establishments + valid_landmarks
 
     while True:
         write_message("What establishment or landmark do you want to buy?", state)
-        write_message(f"Your options are: {', '.join(valid_establishments + valid_landmarks)}", state)
+        write_message(f"Your options are: {', '.join(options)}", state)
         choice = get_input(state)
 
         if choice.lower() in "nothing":
@@ -164,7 +180,7 @@ def parse_buy(active_player: Player, state: GameStateUi, shop: Shop):
             else:
                 write_message(f"Not enough money to buy {chosen_landmark}, please choose a different establishment or landmark", state)
         else:
-            write_message(f"Please respond with an establishment or landmark in the list: {', '.join(valid_establishments + valid_landmarks)}", state)
+            write_message(f"Please respond with an establishment or landmark in the list", state)
 
 
 def establishment_str_to_obj(establishment_str: str):
