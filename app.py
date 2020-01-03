@@ -70,7 +70,7 @@ def update_board(players: list, state: GameStateUi, shop: Shop):
         text_box.addstr("\n\n")
 
         for landmark in player.landmarks:
-            text_box.addstr(f"  {landmark}: {'Bought' if player.landmarks[landmark] else 'Not Bought'} \n")
+            text_box.addstr(f"  {landmark}: {'Bought' if player.landmarks[landmark][0] else 'Not Bought'} \n")
 
     text_box = state.shop_panel[0]
     text_box.clear()
@@ -114,35 +114,51 @@ def parse_yes_no_input(query: str, state: GameStateUi):
 
 
 def parse_buy(active_player: Player, state: GameStateUi, shop: Shop):
-    valid = ["Wheat Field", "Ranch", "Bakery", "Cafe", "Convenience Store", "Forest", "Stadium", "TV Station", "Business Centre",
+    valid_establishments = ["Wheat Field", "Ranch", "Bakery", "Cafe", "Convenience Store", "Forest", "Stadium", "TV Station", "Business Centre",
              "Cheese Factory", "Furniture Factory", "Mine", "Family Restaurant", "Apple Orchard", "Fruit And Vegetable Market", "Nothing"]
-    # todo add landmarks
+    valid_landmarks = [x for x in active_player.landmarks if not active_player.landmarks[x][0]]
 
     while True:
-        write_message("What establishment do you want to buy?", state)
-        write_message(f"Your options are: {', '.join(valid)}", state)
+        write_message("What establishment or landmark do you want to buy?", state)
+        write_message(f"Your options are: {', '.join(valid_establishments + valid_landmarks)}", state)
         choice = get_input(state)
 
         if choice.lower() in "nothing":
             write_message(f"Choosing not to buy an establishment", state)
             break
-        elif choice.lower() in [x.lower() for x in valid]:
+        elif choice.lower() in [x.lower() for x in valid_establishments]:
             chosen_establishment = establishment_str_to_obj(choice.lower())
             if active_player.wallet >= chosen_establishment.cost:
                 if shop.inventory[type(chosen_establishment)] > 0:
-                    write_message(f"Buying establishment: {chosen_establishment.name} for {chosen_establishment.cost} coins ", state)
-                    active_player.wallet -= chosen_establishment.cost
-                    # todo check if already bought tower
-                    active_player.cards[type(chosen_establishment)] += 1
-                    shop.inventory[type(chosen_establishment)] -= 1
-                    break
+                    if not active_player.cards[type(chosen_establishment)] or chosen_establishment.symbol != "tower":
+                        write_message(f"Buying establishment: {chosen_establishment.name} for {chosen_establishment.cost} coins ", state)
+                        active_player.wallet -= chosen_establishment.cost
+                        active_player.cards[type(chosen_establishment)] += 1
+                        shop.inventory[type(chosen_establishment)] -= 1
+                        break
+                    else:
+                        write_message(f"You already have a {chosen_establishment.name()}, choose a different establishment or landmark", state)
                 else:
                     write_message(f"There aren't any {chosen_establishment.name}'s left in the shop", state)
             else:
-                write_message(f"Not enough money to buy {choice}, please choose a different one", state)
-        # todo elif choice.lower() in player.unbought landmarks
+                write_message(f"Not enough money to buy a {choice}, please choose a different establishment or landmark", state)
+
+        elif choice.lower() in [x.lower() for x in valid_landmarks]:
+            # find the capitalised name
+            for landmark in valid_landmarks:
+                if choice.lower() == landmark.lower():
+                    chosen_landmark = landmark
+
+            if active_player.wallet >= active_player.landmarks[chosen_landmark][1]:
+                write_message(f"Buying landmark: {chosen_landmark} for {active_player.landmarks[chosen_landmark][1]} coins ", state)
+                active_player.wallet -= active_player.landmarks[chosen_landmark][1]
+                active_player.landmarks[chosen_landmark] = (True, active_player.landmarks[chosen_landmark][1])
+                break
+
+            else:
+                write_message(f"Not enough money to buy {chosen_landmark}, please choose a different establishment or landmark", state)
         else:
-            write_message(f"Please respond with an establishment in the list: {', '.join(valid)}", state)
+            write_message(f"Please respond with an establishment or landmark in the list: {', '.join(valid_establishments + valid_landmarks)}", state)
 
 
 def establishment_str_to_obj(establishment_str: str):
@@ -171,9 +187,9 @@ def establishment_str_to_obj(establishment_str: str):
 
 def roll_dice(two_dice=False):
     if not two_dice:
-        return randint(1, 6)
+        return randint(1, 6), 0
     else:
-        return randint(1, 12)
+        return randint(1, 6), randint(1, 6)
 
 
 def run_game(num_of_players, stdscr):
@@ -192,11 +208,12 @@ def run_game(num_of_players, stdscr):
     while True:
         curses.panel.update_panels()
         write_message(f"\nIt's player {active_player + 1}'s turn", state)
-        two_dice = parse_yes_no_input("Do you want to roll with two dice?", state) if players[active_player].landmarks["Train Station"] \
+        two_dice = parse_yes_no_input("Do you want to roll with two dice?", state) if players[active_player].landmarks["Train Station"][0] \
             else False
 
-        roll = roll_dice(two_dice)
-        write_message(f"Rolled: {roll}", state)
+        rolls = roll_dice(two_dice)
+        roll = rolls[0] + rolls[1]
+        write_message(f"Rolled: {roll[0]}, {roll[1]}", state)
 
         for ind in range(num_of_players):
             player_ind = (ind + active_player + 1) % 4
@@ -210,32 +227,24 @@ def run_game(num_of_players, stdscr):
         parse_buy(players[active_player], state, shop)
         update_board(players, state, shop)
 
-        # todo check if all landmarks are bought
+        if len([x for x in players[active_player].landmarks if players[active_player].landmarks[x][0]]) == 4:
+            write_message(f"Player {active_player + 1} wins the game!", state)
+            write_message(f"Type yes to end the game", state)
 
-        # todo if not doubles and landmark bought
+            while get_input(state).lower() not in ["yes", 'y']:
+                pass
+
+            break
+
         turn += 1
-        active_player = (active_player + 1) % 4
+        if not (rolls[0] == rolls[1] and players[active_player].landmarks['Amusement Park'][0]):
+            active_player = (active_player + 1) % 4
+        else:
+            write_message(f"You rolled doubles this turn and own the Amusement Park! Have another", state)
 
 
 def main(stdscr):
     run_game(4, stdscr)
-    cards = {
-        "WheatField": 6,
-        "Ranch": 6,
-        "Bakery": 6,
-        "Cafe": 6,
-        "ConvenienceStore": 6,
-        "Forest": 6,
-        "Stadium": 6,
-        "TvStation": 6,
-        "BusinessCentre": 6,
-        "CheeseFactory": 6,
-        "FurnitureFactory": 6,
-        "Mine": 6,
-        "FamilyRestaurant": 6,
-        "AppleOrchard": 6,
-        "FruitAndVegMarket": 6,
-    }
 
 
 if __name__ == "__main__":

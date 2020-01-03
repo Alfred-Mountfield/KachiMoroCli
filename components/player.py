@@ -22,15 +22,16 @@ class Player:
             FruitAndVegetableMarket: 0,
         }
         self.wallet = 3
+
         self.landmarks = {
-            "Train Station": False,
-            "Shopping Mall": False,
-            "Amusement Park": False,
-            "Radio Tower": False,
+            "Train Station": (False, 6),
+            "Shopping Mall": (False, 10),
+            "Amusement Park": (False, 16),
+            "Radio Tower": (False, 22)
         }
 
 
         # train station  | you may roll 1 or 2 dice
         # shopping mall  | each of your cup and bread establishments earn +1 coin
         # amusement park | if you roll doubles take another turn after this one
-        # radio tower    | once every turn you can choose to re-roll you dice
+        # radio tower    | once every turn you can choose to re-roll your dice
